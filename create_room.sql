@@ -18,6 +18,7 @@ BEGIN
 					UPDATE ActivePlayers
 					SET next_id = pid
 					WHERE (room_id = (SELECT room_id FROM Room WHERE Room.name = room_name));
+					CALL show_members((SELECT room_id FROM Room WHERE Room.name = room_name));
 				ELSE
 					SELECT "Time limit should be between 10 and 90 seconds" AS Error;
 				END IF;

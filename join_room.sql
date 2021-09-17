@@ -31,6 +31,7 @@ BEGIN
 							SET next_id = this
 							WHERE player_id = prev;
 							UPDATE ActivePlayers SET next_id = next WHERE (user_id = uid);
+							CALL show_members(rid);
 						ELSE
 							SELECT "You are already playing in this room!" AS Error;
 						END IF;
