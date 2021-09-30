@@ -12,7 +12,7 @@ BEGIN
 				IF (SELECT user_id FROM User WHERE (username = name)) NOT IN (SELECT creators_id FROM Room WHERE (Room.name = room_name)) THEN
 					SELECT "Only room administrators can see the password" AS Error;
 				ELSE
-					SELECT (CASE WHEN Room.password = '0000' THEN "Your room is not protected by a password" ELSE Room.password END) AS message FROM Room WHERE (Room.name = room_name);
+					SELECT (CASE WHEN Room.password = '' THEN "Your room is not protected by a password" ELSE Room.password END) AS message FROM Room WHERE (Room.name = room_name);
 				END IF;
 			END IF;
 		END IF;

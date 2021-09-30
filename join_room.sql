@@ -23,14 +23,12 @@ BEGIN
 						END IF;
 					ELSE
 						IF rid NOT IN (SELECT room_id FROM ActivePlayers WHERE user_id = uid) THEN
-							SET prev = (SELECT player_id FROM ActivePlayers WHERE (room_id = rid) ORDER BY player_id LIMIT 1);
-							SET next = (SELECT next_id FROM ActivePlayers WHERE (room_id = rid) ORDER BY player_id LIMIT 1);
-							INSERT INTO ActivePlayers(room_id,user_id,next_id,turn) VALUES(rid,uid,-1,NULL);
+							SET prev = (SELECT player_id FROM ActivePlayers WHERE (room_id = rid)&&(next_id < 0));
+							INSERT INTO ActivePlayers(room_id,user_id,next_id,turn) VALUES(rid,uid,-uid,NULL);
 							SET this = (SELECT player_id FROM ActivePlayers WHERE (user_id = uid)&&(room_id = rid));
 							UPDATE ActivePlayers
 							SET next_id = this
 							WHERE player_id = prev;
-							UPDATE ActivePlayers SET next_id = next WHERE (user_id = uid);
 							CALL show_members(rid);
 						ELSE
 							SELECT "You are already playing in this room!" AS Error;
