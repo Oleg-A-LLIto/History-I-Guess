@@ -23,16 +23,20 @@ BEGIN
 							IF rid NOT IN (SELECT room_id FROM ActivePlayers WHERE user_id = kid) THEN
 								SELECT "This player is not present in this room" AS Error;
 							ELSE
-								SET next = (SELECT next_id FROM ActivePlayers WHERE (user_id = kid)&&(room_id = rid));
-								SET prev = (SELECT player_id FROM ActivePlayers WHERE (next_id = (SELECT player_id FROM ActivePlayers WHERE (user_id = kid)&&(room_id = rid))) && (room_id = rid));
-								DELETE FROM ActivePlayers WHERE (user_id = kid)&&(room_id = rid);
-								UPDATE ActivePlayers
-								SET next_id = next
-								WHERE player_id = prev;
-								IF (kid = uid) THEN
-									UPDATE Room
-									SET creators_id = (SELECT user_id FROM (SELECT user_id FROM ActivePlayers WHERE room_id = rid UNION SELECT user_id FROM InactivePlayers WHERE room_id = rid) as A ORDER BY RAND() LIMIT 1)
-	 								WHERE (room_id = rid);
+								IF (SELECT card_id FROM Places WHERE (room_id = rid)) IS NOT NULL THEN
+									SELECT "Cannot kick a player during the game" AS Error;
+								ELSE
+									SET next = (SELECT next_id FROM ActivePlayers WHERE (user_id = kid)&&(room_id = rid));
+									SET prev = (SELECT player_id FROM ActivePlayers WHERE (next_id = (SELECT player_id FROM ActivePlayers WHERE (user_id = kid)&&(room_id = rid))) && (room_id = rid));
+									DELETE FROM ActivePlayers WHERE (user_id = kid)&&(room_id = rid);
+									UPDATE ActivePlayers
+									SET next_id = next
+									WHERE player_id = prev;
+									IF (kid = uid) THEN
+										UPDATE Room
+										SET creators_id = (SELECT user_id FROM (SELECT user_id FROM ActivePlayers WHERE room_id = rid UNION SELECT user_id FROM InactivePlayers WHERE room_id = rid) as A ORDER BY RAND() LIMIT 1)
+		 								WHERE (room_id = rid);
+									END IF;
 								END IF;
 							END IF;
 						ELSE

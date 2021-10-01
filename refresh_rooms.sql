@@ -6,5 +6,5 @@ BEGIN
 			UNION
 			SELECT user_id, room_id FROM InactivePlayers) 
 		as users GROUP BY room_id
-	) as unums 
+	) as unums;
 END

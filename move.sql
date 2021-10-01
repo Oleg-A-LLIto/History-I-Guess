@@ -1,8 +1,8 @@
 CREATE PROCEDURE move(name VARCHAR(16), pass VARCHAR(32), rid INT, card INT, position INT)
 BEGIN
 	DECLARE uid INT DEFAULT (SELECT user_id FROM User WHERE (username = name));
-	DECLARE pid INT DEFAULT (SELECT player_id FROM ActivePlayers WHERE user_id = uid);
-	DECLARE del INT DEFAULT (SELECT DISTINCT card_id
+	DECLARE pid INT DEFAULT (SELECT player_id FROM ActivePlayers WHERE user_id = uid AND room_id = rid);
+	DECLARE del INT DEFAULT (SELECT DISTINCT t2.position
 	      FROM Places
 	      JOIN Cards AS c USING (card_id)
 	      JOIN CardTypes AS ct USING (card_type)
@@ -26,7 +26,9 @@ BEGIN
 	         JOIN CardTypes USING (card_type)) AS t3
 	      WHERE (((ct.date > t2.date && Places.position = t2.position - 1 && (ct.date < t3.date && t3.position = t2.position + 1
 OR t2.position = MAX))) || ((t3.date < t2.date && t3.position = t2.position + 1 && (ct.date < t3.date && Places.position = t2.position - 1
-OR t2.position = MIN)))) && (t2.position != 0) && (t2.room_id = Places.room_id && t2.room_id = t3.room_id && mm.room_id = t2.room_id));
+OR t2.position = MIN)))) && (t2.position != 0) && (t2.room_id = Places.room_id && t2.room_id = t3.room_id && mm.room_id = t2.room_id) && t2.room_id = rid);
+	
+	DECLARE del_id INT DEFAULT (SELECT card_id FROM Places WHERE room_id = rid AND position = del);
 	DECLARE next INT;
 	DECLARE time_left INT;
 	IF name NOT IN (SELECT username FROM User) THEN
@@ -44,7 +46,7 @@ OR t2.position = MIN)))) && (t2.position != 0) && (t2.room_id = Places.room_id &
 					IF pid NOT IN (SELECT player_id FROM ActivePlayers WHERE room_id = rid AND turn IS NOT NULL) THEN
 						SELECT "It is not your turn" AS Error;
 					ELSE
-						IF card NOT IN (SELECT card_id FROM CardPlayer WHERE player_id = pid) THEN
+						IF card NOT IN (SELECT card_id FROM CardPlayer WHERE player_id = pid AND room_id = rid) THEN
 							SELECT "You don't have this card in your hand" AS Error;
 						ELSE
 							IF ((position > (SELECT max(position) FROM Places WHERE room_id = rid) + 1) OR (position < (SELECT min(position) FROM Places WHERE room_id = rid) - 1)) THEN
@@ -57,8 +59,8 @@ OR t2.position = MIN)))) && (t2.position != 0) && (t2.room_id = Places.room_id &
 								ELSE
 									-- delete if there is a wrong card
 									IF del IS NOT NULL THEN
-										DELETE FROM Places WHERE card_id = del;
-										INSERT INTO CardDeck (room_id, card_id) values(rid, del);
+										DELETE FROM Places WHERE card_id = del_id;
+										INSERT INTO CardDeck (room_id, card_id) values(rid, del_id);
 										IF (del<0) THEN
 											UPDATE Places SET Places.position = Places.position + 1 WHERE Places.position <= del ORDER BY Places.position desc;
 										ELSE
@@ -79,8 +81,8 @@ OR t2.position = MIN)))) && (t2.position != 0) && (t2.room_id = Places.room_id &
 									DELETE FROM CardPlayer WHERE card_id = card;
 								END IF;
 								--  Ending this player's turn;
-								SET next = (SELECT next_id FROM ActivePlayers WHERE turn IS NOT NULL);
-								UPDATE ActivePlayers SET turn = NULL WHERE turn IS NOT NULL;
+								SET next = (SELECT next_id FROM ActivePlayers WHERE turn IS NOT NULL AND room_id = rid);
+								UPDATE ActivePlayers SET turn = NULL WHERE turn IS NOT NULL AND room_id = rid;
 								UPDATE ActivePlayers SET turn = CURRENT_TIMESTAMP WHERE player_id = next;
 							END IF;
 						END IF;
