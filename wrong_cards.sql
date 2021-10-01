@@ -1,6 +1,6 @@
-CREATE PROCEDURE refresh_game(uid INT, rid INT, KEY CHAR(12))
+CREATE PROCEDURE wrong_cards(uid INT, rid INT, secret_key CHAR(12))
 BEGIN
-	IF KEY = 'oQCrE109mNHG' THEN
+	IF secret_key = 'oQCrE109mN.G' THEN
 		SELECT
 		   room_id,
 		   position,
@@ -123,10 +123,10 @@ BEGIN
 		      )
 		      AS crds using (room_id) 
 		WHERE
-			user_id = uid;
-			room_id = rid;
+			(user_id = uid) &&
+			(room_id = rid)
 		ORDER BY
 		   room_id,
-		   position
+		   position;
 	END IF;
 END
