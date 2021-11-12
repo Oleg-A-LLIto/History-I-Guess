@@ -1,4 +1,5 @@
 CREATE PROCEDURE reveal_password(name VARCHAR(16), pass VARCHAR(32), room_name VARCHAR(16))
+COMMENT "reveal_password(username, password, room_name): look up this rooms password (for admins)"
 BEGIN
 	IF name NOT IN (SELECT username FROM User) THEN
 		SELECT "Wrong username" AS Error;

@@ -1,4 +1,5 @@
 CREATE PROCEDURE kick(name VARCHAR(16), pass VARCHAR(32), room_name VARCHAR(16), to_kick VARCHAR(16))
+COMMENT "kick(username, password, room_name, to_kick): kick a player -to_kick- (only works when waiting for a game to start)"
 BEGIN
 	DECLARE rid INT DEFAULT (SELECT room_id FROM Room WHERE (Room.name = room_name));
 	DECLARE uid INT DEFAULT (SELECT user_id FROM User WHERE (username = name));

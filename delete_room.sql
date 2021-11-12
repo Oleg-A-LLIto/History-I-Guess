@@ -1,4 +1,5 @@
 CREATE PROCEDURE delete_room(name VARCHAR(16), pass VARCHAR(32), rid INT)
+COMMENT "delete_room(username, password, room_id): deletes the room if you are the creator and the game is not going right now"
 BEGIN
 	DECLARE first INT;
 	DECLARE togive INT;
@@ -24,13 +25,12 @@ BEGIN
 						IF (SELECT card_id FROM Places WHERE (room_id = rid)) IS NOT NULL THEN
 							SELECT "This game is running" AS Error;
 						ELSE
-							DELETE FROM Cards WHERE card_id IN (SELECT card_id FROM Places WHERE Room_id = rid
+							DELETE FROM Cards WHERE card_id IN (SELECT card_id FROM Places WHERE room_id = rid
 							UNION
-							SELECT card_id FROM CardDeck WHERE Room_id = rid
+							SELECT card_id FROM CardDeck WHERE room_id = rid
 							UNION
-							SELECT card_id FROM ActivePlayers NATURAL JOIN CardPlayer WHERE Room_id = rid);
-							DELETE FROM ActivePlayers WHERE Room_id = rid;
-							DELETE FROM InactivePlayers WHERE Room_id = rid;
+							SELECT card_id FROM ActivePlayers NATURAL JOIN CardPlayer WHERE room_id = rid);
+							DELETE FROM ActivePlayers WHERE room_id = rid;
 						END IF;
 					END IF;
 				END IF;

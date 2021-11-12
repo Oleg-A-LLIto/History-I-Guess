@@ -1,7 +1,7 @@
 CREATE PROCEDURE refresh_game(name VARCHAR(16), pass VARCHAR(32), rid INT)
+COMMENT "refresh_game(username, password, room_id): refreshes the game status: your cards, other peoples numbers of cards, cards on the table, username of the player whose turn this one is, the amount of time they have left and a number of watchers"
 BEGIN
 	DECLARE uid INT DEFAULT (SELECT user_id FROM User WHERE (username = name));
-	DECLARE next INT;
 	DECLARE time_left INT;
 	IF name NOT IN (SELECT username FROM User) THEN
 		SELECT "Wrong username" AS Error;
@@ -12,41 +12,54 @@ BEGIN
 			IF rid NOT IN (SELECT room_id FROM Room) THEN
 				SELECT "This room does not exist" AS Error;
 			ELSE
-				SET time_left = (SELECT turn_tl - time as time_left FROM Room NATURAL JOIN (
-					SELECT CURRENT_TIMESTAMP-turn as time FROM ActivePlayers WHERE ((room_id = rid) && (turn IS NOT NULL))) as a WHERE Room.room_id = rid);
-				IF (time_left<-2) THEN 
-					SELECT "Next turn" as message;
-					SET next = (SELECT next_id FROM ActivePlayers WHERE turn IS NOT NULL AND room_id = rid);
-					UPDATE ActivePlayers SET turn = NULL WHERE turn IS NOT NULL AND room_id = rid;
-					UPDATE ActivePlayers SET turn = CURRENT_TIMESTAMP WHERE player_id = next AND room_id = rid;
-					SET time_left = (SELECT turn_tl FROM Room WHERE room_id = rid);
+				IF (SELECT turn_tl FROM Room WHERE room_id = rid) IS NOT NULL THEN
+					SET time_left = (SELECT turn_tl - time as time_left FROM Room NATURAL JOIN (
+						SELECT TIME_TO_SEC(TIMEDIFF(CURRENT_TIMESTAMP(),turn)) as time FROM ActivePlayers WHERE ((room_id = rid) && (turn IS NOT NULL))) as a WHERE Room.room_id = rid);
+					IF (time_left<-2) THEN 
+						CALL end_turn(rid, (SELECT user_id FROM ActivePlayers WHERE ((room_id = rid) && (turn IS NOT NULL))), 'oQCrE109mN.G');
+						SET time_left = (SELECT turn_tl FROM Room WHERE room_id = rid);
+					END IF;
 				END IF;
 				IF rid NOT IN (SELECT room_id FROM InactivePlayers WHERE user_id = uid) THEN
 					IF rid NOT IN (SELECT room_id FROM ActivePlayers WHERE user_id = uid) THEN
 						SELECT "You are not in this room!" AS Error;
 					ELSE
-						-- Player whose move this one is and how much time they have left
-						SELECT username as thinking, time_left FROM ActivePlayers NATURAL JOIN User WHERE room_id = rid AND turn IS NOT NULL;
-						-- Player's cards
-						SELECT card_id, date, CardTypes.name FROM ActivePlayers NATURAL JOIN CardPlayer NATURAL JOIN Cards NATURAL JOIN CardTypes WHERE user_id = uid AND room_id = rid;
-						-- Cards on a table
-						CALL wrong_cards(uid, rid, 'oQCrE109mN.G');
-						-- SELECT position, date, CardTypes.name FROM Places NATURAL JOIN Cards NATURAL JOIN CardTypes WHERE room_id = rid;
-						-- Each player's number of cards
-						SELECT username, COUNT(card_id) FROM ActivePlayers NATURAL JOIN CardPlayer NATURAL JOIN User WHERE (room_id = rid) && (user_id != uid) GROUP BY user_id;
-						-- Number of watchers for this room
-						SELECT count(user_id) as watchers FROM InactivePlayers WHERE (room_id = rid);
+						IF (SELECT card_id FROM Places WHERE (room_id = rid) LIMIT 1) IS NOT NULL THEN
+							-- Player whose move this one is and how much time they have left
+							IF (SELECT turn_tl FROM Room WHERE room_id = rid) IS NOT NULL THEN
+								SELECT username as thinking, time_left FROM ActivePlayers NATURAL JOIN User WHERE room_id = rid AND turn IS NOT NULL;
+							ELSE
+								SELECT username as thinking FROM ActivePlayers NATURAL JOIN User WHERE room_id = rid AND turn IS NOT NULL;
+							END IF;
+							-- Player's cards
+							SELECT card_id, CardTypes.name, CardTypes.card_type FROM ActivePlayers NATURAL JOIN CardPlayer NATURAL JOIN Cards NATURAL JOIN CardTypes WHERE user_id = uid AND room_id = rid;
+							-- Cards on a table
+							SELECT position, card_type, CardTypes.name, CardTypes.date, CASE WHEN position = wrong THEN "no" ELSE "yes" END as correct FROM Places NATURAL JOIN Room NATURAL JOIN Cards JOIN CardTypes USING (card_type) WHERE room_id = rid ORDER BY position;
+							-- Each player's number of cards
+							SELECT username, count(card_id) FROM ActivePlayers LEFT JOIN CardPlayer USING (player_id) NATURAL JOIN User WHERE room_id = rid AND user_id != uid GROUP BY player_id;
+							-- Number of watchers for this room
+							SELECT count(user_id) as watchers FROM InactivePlayers WHERE (room_id = rid);
+						ELSE
+							SELECT username as winner FROM ActivePlayers NATURAL JOIN User WHERE (room_id = rid) ORDER BY player_id LIMIT 1;
+						END IF;
 					END IF;
 				ELSE
-					-- Player whose move this one is and how much time they have left
-					SELECT username as thinking, time_left FROM ActivePlayers NATURAL JOIN User WHERE room_id = rid AND turn IS NOT NULL;
-					-- Cards on a table
-					CALL wrong_cards(uid, rid, 'oQCrE109mN.G');
-					-- SELECT position, date, CardTypes.name FROM Places NATURAL JOIN Cards NATURAL JOIN CardTypes WHERE room_id = rid;
-					-- Each player's number of cards
-					SELECT username, COUNT(card_id) FROM ActivePlayers NATURAL JOIN CardPlayer NATURAL JOIN User WHERE (room_id = rid) && (user_id != uid) GROUP BY user_id;
-					-- Number of watchers for this room
-					SELECT count(user_id) as watchers FROM InactivePlayers WHERE (room_id = rid);
+					IF (SELECT card_id FROM Places WHERE (room_id = rid) LIMIT 1) IS NOT NULL THEN
+						-- Player whose move this one is and how much time they have left
+						IF (SELECT turn_tl FROM Room WHERE room_id = rid) IS NOT NULL THEN
+							SELECT username as thinking, time_left FROM ActivePlayers NATURAL JOIN User WHERE room_id = rid AND turn IS NOT NULL;
+						ELSE
+							SELECT username as thinking FROM ActivePlayers NATURAL JOIN User WHERE room_id = rid AND turn IS NOT NULL;
+						END IF;
+						-- Cards on a table
+						SELECT position, card_type, CardTypes.name, CardTypes.date, CASE WHEN position = wrong THEN "no" ELSE "yes" END as correct FROM Places NATURAL JOIN Room NATURAL JOIN Cards JOIN CardTypes USING (card_type) WHERE room_id = rid ORDER BY position;
+						-- Each player's number of cards
+						SELECT username, count(card_id) FROM ActivePlayers LEFT JOIN CardPlayer USING (player_id) NATURAL JOIN User WHERE room_id = rid AND user_id != uid GROUP BY player_id;
+						-- Number of watchers for this room
+						SELECT count(user_id) as watchers FROM InactivePlayers WHERE (room_id = rid);
+					ELSE
+						SELECT username as winner FROM ActivePlayers NATURAL JOIN User WHERE (room_id = rid) ORDER BY player_id LIMIT 1;
+					END IF;
 				END IF;
 			END IF;
 		END IF;

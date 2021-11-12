@@ -1,4 +1,5 @@
 CREATE PROCEDURE wrong_cards(uid INT, rid INT, secret_key CHAR(12))
+COMMENT "it’s a secret don’t look"
 BEGIN
 	IF secret_key = 'oQCrE109mN.G' THEN
 		SELECT
