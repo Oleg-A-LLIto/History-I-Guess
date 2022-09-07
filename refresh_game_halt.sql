@@ -1,4 +1,4 @@
-CREATE PROCEDURE refresh_game(name VARCHAR(16), pass VARCHAR(32), rid INT)
+CREATE PROCEDURE refresh_game_halt(name VARCHAR(16), pass VARCHAR(32), rid INT)
 COMMENT "refresh_game(username, password, room_id): refreshes the game status: your cards, other peoples numbers of cards, cards on the table, username of the player whose turn this one is, the amount of time they have left and a number of watchers"
 BEGIN
 	DECLARE uid INT DEFAULT (SELECT user_id FROM User WHERE (username = name));
@@ -26,7 +26,11 @@ BEGIN
 						SELECT "You are not in this room!" AS Error;
 					ELSE
 						IF (SELECT count(*) FROM Places WHERE room_id = rid) = 0 THEN
-							CALL show_members(rid);
+							IF (SELECT winner_id FROM Room WHERE room_id = rid) IS NULL THEN
+								CALL show_members(rid);
+							ELSE
+								SELECT username as winner FROM Room JOIN User ON (user_id = winner_id) WHERE (room_id = rid);
+							END IF;
 						ELSE
 							START TRANSACTION READ ONLY;
 								-- Player whose move this one is and how much time they have left
@@ -39,6 +43,7 @@ BEGIN
 								SELECT card_id, card_type, CardTypes.name FROM ActivePlayers NATURAL JOIN CardPlayer NATURAL JOIN Cards NATURAL JOIN CardTypes WHERE user_id = uid AND room_id = rid;
 								-- Cards on a table
 								SELECT position, card_id as pos_id, card_type as pos_type, CardTypes.name as pos_name, CardTypes.date as pos_date, CASE WHEN position = wrong THEN "no" ELSE "yes" END as correct FROM Places NATURAL JOIN Room NATURAL JOIN Cards JOIN CardTypes USING (card_type) WHERE room_id = rid ORDER BY position;
+								CALL host700505_sandbox.tormoz(6);
 								-- Each player's number of cards
 								SELECT username, count(card_id) as cardsonhands FROM ActivePlayers LEFT JOIN CardPlayer USING (player_id) NATURAL JOIN User WHERE room_id = rid AND user_id != uid GROUP BY player_id;
 								-- Number of watchers for this room

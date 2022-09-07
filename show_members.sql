@@ -7,5 +7,6 @@ BEGIN
 		SELECT username FROM User NATURAL JOIN(
 			SELECT user_id, room_id FROM ActivePlayers WHERE room_id = rid) 
 		as users;
+		SELECT username as creator FROM User JOIN Room as r ON (user_id = creators_id) WHERE (room_id = rid);
 	END IF;
 END

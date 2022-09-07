@@ -18,14 +18,22 @@ BEGIN
 					IF (SELECT card_id FROM Places WHERE (room_id = rid)) IS NOT NULL THEN
 						SELECT "This game has not ended yet" AS Error;
 					ELSE
+						SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+						START TRANSACTION;
 						DELETE FROM InactivePlayers WHERE (user_id = uid)&&(room_id = rid);
-						SET prev = (SELECT player_id FROM ActivePlayers WHERE (room_id = rid)&&(next_id IS NULL));
-						INSERT INTO ActivePlayers(room_id,user_id,next_id,turn) VALUES(rid,uid,NULL,NULL);
-						SET this = (SELECT player_id FROM ActivePlayers WHERE (user_id = uid)&&(room_id = rid));
-						UPDATE ActivePlayers
-						SET next_id = this
-						WHERE player_id = prev;
-						CALL show_members(rid);
+						IF (SELECT count(player_id) FROM ActivePlayers WHERE room_id = rid FOR UPDATE) = 8 THEN
+							SELECT "This room is already full" as Error;
+							COMMIT;
+						ELSE
+							SET prev = (SELECT player_id FROM ActivePlayers WHERE (room_id = rid)&&(next_id IS NULL));
+							INSERT INTO ActivePlayers(room_id,user_id,next_id,turn) VALUES(rid,uid,NULL,NULL);
+							SET this = (SELECT player_id FROM ActivePlayers WHERE (user_id = uid)&&(room_id = rid));
+							UPDATE ActivePlayers
+							SET next_id = this
+							WHERE player_id = prev;
+							CALL show_members(rid);
+							COMMIT;
+						END IF;
 					END IF;
 				END IF;
 			END IF;

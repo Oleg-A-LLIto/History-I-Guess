@@ -1,4 +1,4 @@
-CREATE PROCEDURE end_turn(rid INT, uid INT)
+CREATE PROCEDURE end_turn_halt(rid INT, uid INT)
 SQL SECURITY INVOKER
 COMMENT "it’s a secret don’t look"
 BEGIN
@@ -16,11 +16,14 @@ BEGIN
 			-- We either have a winner or a final round
 			IF (SELECT count(player_id) FROM winners) = 1 THEN
 				-- We have a winner
+				CALL host700505_sandbox.tormoz(6);
 				SET winner_id = (SELECT user_id FROM winners NATURAL JOIN ActivePlayers NATURAL JOIN User);
 				UPDATE Room SET Room.winner_id = winner_id WHERE room_id = rid;
 				INSERT INTO InactivePlayers(room_id,user_id)
 					SELECT rid, user_id FROM ActivePlayers WHERE (room_id = rid);
 				DELETE FROM ActivePlayers WHERE (room_id = rid);
+				UPDATE ActivePlayers SET next_id = NULL WHERE (room_id = rid);
+				UPDATE ActivePlayers SET turn = NULL WHERE (room_id = rid);
 				UPDATE Room SET wrong = NULL WHERE (room_id = rid);
 				DELETE FROM Cards WHERE card_id IN (SELECT card_id FROM Places WHERE room_id = rid
 				UNION
@@ -36,6 +39,7 @@ BEGIN
 				INSERT INTO InactivePlayers(room_id,user_id)
 					SELECT rid, user_id FROM ActivePlayers WHERE (room_id = rid) AND (player_id NOT IN (SELECT player_id FROM winners));
 				DELETE FROM ActivePlayers WHERE (room_id = rid) AND (player_id NOT IN (SELECT player_id FROM winners));
+				CALL host700505_sandbox.tormoz(6);
 				-- relinking the player list 
 				CREATE TEMPORARY TABLE newchain
 					SELECT ap.player_id, nxt.player_id as next_id FROM ActivePlayers as ap JOIN ActivePlayers as nxt USING (room_id) WHERE nxt.player_id = (SELECT min(player_id) FROM ActivePlayers as ao WHERE ao.player_id > ap.player_id AND room_id = rid);

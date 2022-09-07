@@ -1,4 +1,4 @@
-CREATE PROCEDURE move(name VARCHAR(16), pass VARCHAR(32), rid INT, card INT, pos_to_put INT)
+CREATE PROCEDURE move_halt(name VARCHAR(16), pass VARCHAR(32), rid INT, card INT, pos_to_put INT)
 COMMENT "move(username, password, room_id, card_id, position): put your -card- in a -position- on the table"
 BEGIN
 	DECLARE uid INT DEFAULT (SELECT user_id FROM User WHERE (username = name));
@@ -19,11 +19,7 @@ BEGIN
 				SELECT "This room does not exist" AS Error;
 			ELSE
 				IF rid NOT IN (SELECT room_id FROM ActivePlayers WHERE user_id = uid) THEN
-					IF (SELECT winner_id FROM Room WHERE room_id = rid) = uid THEN
-						SELECT name as winner;
-					ELSE
-						SELECT "You are not in this room!" AS Error;
-					END IF;
+					SELECT "You are not in this room!" AS Error;
 				ELSE
 					IF pid NOT IN (SELECT player_id FROM ActivePlayers WHERE room_id = rid AND turn IS NOT NULL) THEN
 						SELECT "It is not your turn" AS Error;
@@ -64,6 +60,7 @@ BEGIN
 									END IF;
 									-- Insert this card
 									INSERT INTO Places (position, room_id, card_id) values (pos_to_put,rid,card);
+									CALL host700505_sandbox.tormoz(6);
 									-- Delete it from player's hand
 									DELETE FROM CardPlayer WHERE card_id = card;
 									-- Check if our new card is correct
